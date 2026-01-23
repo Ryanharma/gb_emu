@@ -43,6 +43,7 @@ void cpu_init(cpu_t *cpu);
 bool cpu_step(cpu_t *cpu, cart_t *cart);
 uint16_t cpu_read_reg(cpu_t *cpu, reg_t RT);
 void cpu_write_reg(cpu_t *cpu, reg_t RT, uint8_t data);
+void cpu_write_reg16(cpu_t *cpu, reg_t RT, uint16_t data);
 void fetch_instruction(cpu_t *cpu, cart_t *cart);
-void fetch_data(cpu_t *cpu);
+void fetch_data(cpu_t *cpu, cart_t *cart);
 void execute_instruction(cpu_t *cpu, cart_t *cart);

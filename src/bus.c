@@ -18,7 +18,6 @@
 
 uint8_t bus_read(uint16_t addr, cart_t *cart) {
     if (BETWEEN(addr, 0x0000, 0x7FFF)) {
-        printf("ROM value at addr 0x%2.2X = 0x%2.2X\n", addr, *(cart->rom_data + addr));
         return *(cart->rom_data + addr);
     }
     if (BETWEEN(addr, 0x8000, 0x9FFF)) {
@@ -27,7 +26,7 @@ uint8_t bus_read(uint16_t addr, cart_t *cart) {
 }
 
 void bus_write(uint16_t addr, uint8_t data, cart_t *cart) {
-    if (BETWEEN(addr, 0x0000, 0x7FFf)) {
+    if (BETWEEN(addr, 0x0000, 0x7FFF)) {
         ERROR("NOT ALLOWED TO WRITE ON CARTRIDGE ROM");
     }
 }
