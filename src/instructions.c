@@ -124,3 +124,38 @@ ins_t instruction_by_opcode(uint8_t opcode) {
         return instructions[opcode];
     }
 }
+
+char *reg_by_instruction(reg_t reg) {
+    switch (reg) {
+        case RT_A:
+            return "A";
+        case RT_F:
+            return "F";
+        case RT_AF:
+            return "AF";
+        case RT_B:
+            return "B";
+        case RT_C:
+            return "C";
+        case RT_BC:
+            return "BC";
+        case RT_D:
+            return "D";
+        case RT_E:
+            return "E";
+        case RT_DE:
+            return "DE";
+        case RT_H:
+            return "H";
+        case RT_L:
+            return "L";
+        case RT_HL:
+            return "HL"; 
+        case RT_SP:
+            return "SP";
+        case RT_PC:
+            return "PC";
+        default:
+            ERROR("UNKNOWN REG");
+    }
+}

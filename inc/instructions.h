@@ -73,5 +73,6 @@ typedef struct instruction {
 } ins_t;
 
 ins_t instruction_by_opcode(uint8_t opcode);
+char *reg_by_instruction(reg_t reg);
 // void ld_r8_r8(cpu_t cpu);
 // void ld_r8_n(cpu_t cpu);

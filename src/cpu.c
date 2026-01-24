@@ -14,6 +14,7 @@ void fetch_data(cpu_t *cpu, cart_t *cart) {
         }
         case AM_R8_D8: {
             cpu->fetched_data = bus_read(cpu->registers.PC, cart);
+            cpu->registers.PC++;
             break;
         }
         case AM_R8_MR16: {
@@ -159,13 +160,14 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             break;
         case INS_LD:
             if (cpu->is_dest_mem) {
+                printf("M[0x%2.2X] = %2.2X\n", cpu->mem_dest, cpu->fetched_data);
                 bus_write(cpu->mem_dest, cpu->fetched_data, cart);
                 // cpu->registers.PC++; // No PC++ for fetch/execute overlap technique
                 break;
             }
             else {
                 cpu_write_reg(cpu, cpu->cur_instruction.reg1, cpu->fetched_data);
-                printf("LD %d to register %d\n", cpu->fetched_data, cpu->cur_instruction.reg1);
+                printf("LD %d to register %s\n", cpu->fetched_data, reg_by_instruction(cpu->cur_instruction.reg1));
                 break;
             }
         case INS_LD16:
@@ -174,13 +176,15 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
                 uint8_t lsb = cpu->fetched_data && 0xFF;
                 uint8_t msb = cpu->fetched_data >> 8;
                 bus_write(cpu->mem_dest, lsb, cart);
+                printf("M[%X] = %X\n", cpu->mem_dest, lsb);
                 cpu->mem_dest++;
                 bus_write(cpu->mem_dest, msb, cart);
+                printf("M[%X] = %X\n", cpu->mem_dest, msb);
                 break;
             }
             else {
                 cpu_write_reg16(cpu, cpu->cur_instruction.reg1, cpu->fetched_data);
-                printf("LD %d to register %d\n", cpu->fetched_data, cpu->cur_instruction.reg1);
+                printf("LD %d to register %s\n", cpu->fetched_data, reg_by_instruction(cpu->cur_instruction.reg1));
                 break;
             }
         case INS_JP:
@@ -263,44 +267,64 @@ uint16_t cpu_read_reg(cpu_t *cpu, reg_t RT) {
 void cpu_write_reg(cpu_t *cpu, reg_t RT, uint8_t data) {
     switch (RT) {
         // 8 bit registers
-        case RT_A:
+        case RT_A: {
             cpu->registers.A = data;
-        case RT_B:
+            break;
+        }
+        case RT_B: {
             cpu->registers.B = data;
-        case RT_C:
+            break;
+        }
+        case RT_C: {
             cpu->registers.C = data;
-        case RT_D:
+            break;
+        }
+        case RT_D: {
             cpu->registers.D = data;
-        case RT_E:
+            break;
+        }
+        case RT_E: {
             cpu->registers.E = data;
-        case RT_H:
+            break;
+        }
+        case RT_H: {
             cpu->registers.H = data;
-        case RT_L:
+            break;
+        }
+        case RT_L: {
             cpu->registers.L = data;
+            break;
+        }
         default:
-            return;
+            break;
     }
+    return;
 }
 void cpu_write_reg16(cpu_t *cpu, reg_t RT, uint16_t data) {
-    uint8_t lsb = (data && 0xFF);
+    uint8_t lsb = (data & 0xFF);
     uint8_t msb = (data >> 8);
     switch (RT) {
         // 16 bit registers
         case RT_AF: {
             // cpu->registers.F = lsb; // No load operation with AF
             cpu->registers.A = msb;
+            break;
         }
         case RT_BC: {
             cpu->registers.C = lsb;
             cpu->registers.B = msb;
+            break;
         }
         case RT_DE: {
             cpu->registers.E = lsb;
             cpu->registers.D = msb;
+            break;
         }
         case RT_HL: {
             cpu->registers.L = lsb;
             cpu->registers.H = msb;
+            break;
         }
     }
+    return;
 }
