@@ -47,3 +47,5 @@ void cpu_write_reg16(cpu_t *cpu, reg_t RT, uint16_t data);
 void fetch_instruction(cpu_t *cpu, cart_t *cart);
 void fetch_data(cpu_t *cpu, cart_t *cart);
 void execute_instruction(cpu_t *cpu, cart_t *cart);
+uint8_t get_carry_add(uint16_t reg, int8_t e);
+int16_t CA2(uint16_t x);

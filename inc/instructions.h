@@ -23,7 +23,13 @@ typedef enum {
     INS_INC,
     INS_DEC,
     INS_ADD,
+    INS_ADC,
+    INS_SUB,
+    INS_SBC,
+    INS_CP,
     INS_JP,
+    INS_PUSH,
+    INS_POP,
 } asm_t;
 
 typedef enum {
@@ -48,6 +54,7 @@ typedef enum {
     AM_R16_MD16,
     AM_MD16_R16,
     AM_R16_R16,
+    AM_R16_SPP,
 } addr_mode_t;
 
 typedef enum {

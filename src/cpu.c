@@ -1,5 +1,6 @@
 #include "cpu.h"
 
+static int c = 644;
 void fetch_data(cpu_t *cpu, cart_t *cart) {
     // Function that fetch data according to the addressing mode of the current instruction
     cpu->mem_dest    = 0;
@@ -135,6 +136,16 @@ void fetch_data(cpu_t *cpu, cart_t *cart) {
         case AM_R16_R16: {
             cpu->fetched_data = cpu_read_reg(cpu, cpu->cur_instruction.reg2);
         }
+        case AM_R16_SPP: {
+            int8_t e = (int8_t) bus_read(cpu->registers.PC, cart);
+            cpu->registers.PC++;
+            uint16_t SP = cpu_read_reg(cpu, cpu->cur_instruction.reg2);
+            cpu->fetched_data = SP + e;
+            uint8_t carry = get_carry_add(SP, e);
+            // Set flags
+            cpu->flags.h = (carry && (1 >> 3));
+            cpu->flags.c = (carry && (1 >> 7));
+        }
         default: {
             ERROR("INVALID ADDRESSING MODE");
         }
@@ -155,14 +166,14 @@ void fetch_instruction(cpu_t *cpu, cart_t *cart) {
 
 void execute_instruction(cpu_t *cpu, cart_t *cart) {
     switch (cpu->cur_instruction.ins_type) {
-        case INS_NOP:
+        case INS_NOP: {
             printf("NOP\n");
             break;
-        case INS_LD:
+        }
+        case INS_LD: {
             if (cpu->is_dest_mem) {
                 printf("M[0x%2.2X] = %2.2X\n", cpu->mem_dest, cpu->fetched_data);
                 bus_write(cpu->mem_dest, cpu->fetched_data, cart);
-                // cpu->registers.PC++; // No PC++ for fetch/execute overlap technique
                 break;
             }
             else {
@@ -170,7 +181,8 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
                 printf("LD %d to register %s\n", cpu->fetched_data, reg_by_instruction(cpu->cur_instruction.reg1));
                 break;
             }
-        case INS_LD16:
+        }
+        case INS_LD16: {
             // Fetched data is actually 16 bits in this case
             if (cpu->is_dest_mem) {
                 uint8_t lsb = cpu->fetched_data && 0xFF;
@@ -187,7 +199,26 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
                 printf("LD %d to register %s\n", cpu->fetched_data, reg_by_instruction(cpu->cur_instruction.reg1));
                 break;
             }
-        case INS_JP:
+        }
+        case INS_PUSH: {
+            cpu->fetched_data = cpu_read_reg(cpu, cpu->cur_instruction.reg1);
+            cpu->registers.SP--;
+            bus_write(cpu->registers.SP, (cpu->fetched_data) >> 8, cart); // Write MSB of fetched data
+            cpu->registers.SP--;
+            bus_write(cpu->registers.SP, (cpu->fetched_data) & 0xFF, cart); // Write LSB of fetched data
+            printf("PUSH from %s to memory %x / SP = %x\n", reg_by_instruction(cpu->cur_instruction.reg1), cpu->fetched_data, cpu->registers.SP);
+            break;
+        }
+        case INS_POP: {
+            uint8_t lsb = bus_read(cpu->registers.SP, cart);
+            cpu->registers.SP++;
+            uint8_t msb = bus_read(cpu->registers.SP, cart);
+            cpu->registers.SP++;
+            uint16_t data = lsb | (msb << 8);
+            cpu_write_reg16(cpu, cpu->cur_instruction.reg1, data);
+            printf("POP to %s = %x / SP = %x\n", reg_by_instruction(cpu->cur_instruction.reg1), data, cpu->registers.SP);
+        }
+        case INS_JP: {
             // First let's implement it without any condition
             uint8_t lsb = bus_read(cpu->registers.PC, cart);
             cpu->registers.PC++;
@@ -197,6 +228,99 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             cpu->registers.PC = addr;
             printf("JP 0x%2.2x\n", addr);
             break;
+        }
+
+        // Arithmetical instructions
+        case INS_INC: {
+            uint8_t res;
+            uint8_t carry;
+            if (cpu->is_dest_mem) {
+                uint16_t data = bus_read(cpu->mem_dest, cart);
+                carry = get_carry_add(data, 1);
+                res = data + 1;
+                bus_write(cpu->mem_dest, res, cart);
+            }
+            else {
+                // Destination is a register
+                uint16_t reg = cpu_read_reg(cpu, cpu->cur_instruction.reg1);
+                carry = get_carry_add(reg, 1);
+                res = reg + 1;
+                cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            }
+            cpu->flags.z = (res == 0);
+            cpu->flags.n = 0;
+            cpu->flags.h = carry && (1 >> 3);
+            break;
+        }
+        case INS_DEC: {
+            uint8_t res;
+            uint8_t carry;
+            if (cpu->is_dest_mem) {
+                uint16_t data = bus_read(cpu->mem_dest, cart);
+                carry = get_carry_add(data, 0xFF);
+                res = data - 1;
+                bus_write(cpu->mem_dest, res, cart);
+            }
+            else {
+                // Destination is a register
+                uint16_t reg = cpu_read_reg(cpu, cpu->cur_instruction.reg1);
+                carry = get_carry_add(reg, 0xFF);
+                res = reg - 1;
+                cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+                // Set flags
+            }
+            break;
+        }
+        case INS_ADD: {
+            uint8_t carry = get_carry_add(cpu->registers.A, cpu->fetched_data);
+            cpu->registers.A += cpu->fetched_data;
+            // Set flags (z,n,h,c)!!!
+            cpu->flags.z = (cpu->registers.A == 0);
+            cpu->flags.n = 0;
+            cpu->flags.h = (carry && (1 >> 3));
+            cpu->flags.c = (carry && (1 >> 7));
+            break;
+        }
+        case INS_ADC: {
+            uint8_t carry = get_carry_add(cpu->registers.A + cpu->flags.c, cpu->fetched_data);
+            cpu->registers.A += cpu->fetched_data + cpu->flags.c;
+            // Set flags (z,n,h,c)!!!
+            cpu->flags.z = (cpu->registers.A == 0);
+            cpu->flags.n = 0;
+            cpu->flags.h = (carry && (1 >> 3));
+            cpu->flags.c = (carry && (1 >> 7));
+            break;
+        }
+        case INS_SUB: {
+            uint8_t carry = get_carry_add(cpu->registers.A, CA2(cpu->fetched_data));
+            cpu->registers.A += CA2(cpu->fetched_data);
+            // Set flags (z,n,h,c)!!!
+            cpu->flags.z = (cpu->registers.A == 0);
+            cpu->flags.n = 1;
+            cpu->flags.h = (carry && (1 >> 3));
+            cpu->flags.c = (carry && (1 >> 7));
+            break;
+        }
+        case INS_CP: {
+            uint8_t carry = get_carry_add(cpu->registers.A, CA2(cpu->fetched_data));
+            uint8_t result = cpu->registers.A + CA2(cpu->fetched_data); // No update on register A
+            // Set flags (z,n,h,c)!!!
+            cpu->flags.z = (result == 0);
+            cpu->flags.n = 1;
+            cpu->flags.h = (carry && (1 >> 3));
+            cpu->flags.c = (carry && (1 >> 7));
+            break;
+        }
+        case INS_SBC: {
+            uint8_t carry = get_carry_add(cpu->registers.A, CA2(cpu->fetched_data) - cpu->flags.c);
+            cpu->registers.A += CA2(cpu->fetched_data) - cpu->flags.c;
+            // Set flags (z,n,h,c)!!!
+            cpu->flags.z = (cpu->registers.A == 0);
+            cpu->flags.n = 1;
+            cpu->flags.h = (carry && (1 >> 3));
+            cpu->flags.c = (carry && (1 >> 7));
+            break;
+        }
         default:
             ERROR("INSTRUCTION TYPE UNDEFINED");
     }
@@ -225,7 +349,6 @@ bool cpu_step(cpu_t *cpu, cart_t *cart) {
 }
 
 uint16_t cpu_read_reg(cpu_t *cpu, reg_t RT) {
-    uint8_t msb;
     switch (RT) {
         // 8 bit registers
         case RT_A:
@@ -244,20 +367,25 @@ uint16_t cpu_read_reg(cpu_t *cpu, reg_t RT) {
             return cpu->registers.L;
         
         // 16 bit registers 
+        case RT_AF: {
+            uint8_t A = cpu->registers.A;
+            uint8_t F = (cpu->flags.z << 7) | (cpu->flags.n << 6) | (cpu->flags.h << 5) | (cpu->flags.c << 4);
+            return ((A << 8) | F);
+        }
         case RT_BC: {
-            msb = cpu->registers.B;
-            // cpu->registers.PC++;
-            return ((msb << 8) | (cpu->registers.C));
+            uint8_t B = cpu->registers.B;
+            uint8_t C = cpu->registers.C;
+            return ((B << 8) | C);
         }
         case RT_DE: {
-            msb = cpu->registers.D;
-            // cpu->registers.PC++;
-            return ((msb << 8) | (cpu->registers.E));
+            uint8_t D = cpu->registers.D;
+            uint8_t E = cpu->registers.E;
+            return ((D << 8) | E);
         }
         case RT_HL: {
-            msb = cpu->registers.H;
-            // cpu->registers.PC++;
-            return ((msb << 8) | (cpu->registers.L));
+            uint8_t H = cpu->registers.H;
+            uint8_t L = cpu->registers.L;
+            return ((H << 8) | L);
         }
         default:
             return 0xFF;
@@ -306,7 +434,11 @@ void cpu_write_reg16(cpu_t *cpu, reg_t RT, uint16_t data) {
     switch (RT) {
         // 16 bit registers
         case RT_AF: {
-            // cpu->registers.F = lsb; // No load operation with AF
+            // Set F flags
+            cpu->flags.z = lsb && (1 << 7);
+            cpu->flags.n = lsb && (1 << 6);
+            cpu->flags.h = lsb && (1 << 5);
+            cpu->flags.c = lsb && (1 << 4);
             cpu->registers.A = msb;
             break;
         }
@@ -327,4 +459,33 @@ void cpu_write_reg16(cpu_t *cpu, reg_t RT, uint16_t data) {
         }
     }
     return;
+}
+
+uint8_t get_carry_add(uint16_t reg, int8_t e) {
+    // The role of this function is to get the carry vector resulting from an addition.
+    // This is important to set the flag register after an arithmetic operation was done.
+    // It consist of the following operations (indexed from LSB to MSB): 
+    // if i = 0: c(0) = reg(0) x e(0)
+    // if i > 0: c(i) = reg(i) x e(i) + reg(i) x c(i-1) + e(i) x c(i-1)
+    uint8_t c = 0; // Carry vector, constructed with or operations
+    for (int i = 0; i < sizeof(int8_t) * 8; i++) {
+        if (i == 0) {
+            c |= (((reg & (1 << i)) && (e & (1 << i))) << i);
+        }
+        else {
+            c |= ((((reg & (1 << i)) && (e & (1 << i))) << i) | (((reg & (1 << i)) && (c & (1 << (i-1)))) << i) | (((e & (1 << i)) && (c & (1 << (i-1)))) << i));
+        }
+    }
+    return c;
+}
+
+int16_t CA2(uint16_t x) {
+    // Return the CA2 (complement A2) of an unsigned integer for the substraction operation
+    int16_t ca2_x;
+    // 1 - Invert all the bits
+    ca2_x = ~x;
+    // 2 - Add 1 to get the CA2
+    ca2_x += 1;
+    
+    return ca2_x;
 }
