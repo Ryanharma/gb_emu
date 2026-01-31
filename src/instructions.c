@@ -5,11 +5,14 @@ ins_t instructions[0x100] = {
     [0x00] = {INS_NOP},
     [0x01] = {INS_LD16, AM_R16_MD16, RT_BC},
     [0x02] = {INS_LD, AM_MR16_R8, RT_BC, RT_A},
+    [0x03] = {INS_INC16, AM_NONE, RT_BC},
     [0x04] = {INS_INC, AM_R8_R8, RT_B},
     [0x05] = {INS_DEC, AM_R8_R8, RT_B},
     [0x06] = {INS_LD, AM_R8_D8, RT_B, RT_NONE},
     [0x08] = {INS_LD16, AM_MD16_R16, RT_NONE, RT_SP},
+    [0x09] = {INS_ADD16, AM_R16_R16, RT_HL, RT_BC},
     [0x0A] = {INS_LD, AM_R8_MR16, RT_A, RT_BC},
+    [0x0B] = {INS_DEC16, AM_NONE, RT_BC},
     [0x0C] = {INS_INC, AM_R8_R8, RT_C},
     [0x0D] = {INS_DEC, AM_R8_R8, RT_C},
     [0x0E] = {INS_LD, AM_R8_D8, RT_C, RT_NONE},
@@ -17,10 +20,13 @@ ins_t instructions[0x100] = {
     // 0x1x
     [0x11] = {INS_LD16, AM_R16_MD16, RT_DE, RT_NONE},
     [0x12] = {INS_LD, AM_MR16_R8, RT_DE, RT_A},
+    [0x13] = {INS_INC16, AM_NONE, RT_DE},
     [0x14] = {INS_INC, AM_R8_R8, RT_D},
     [0x15] = {INS_DEC, AM_R8_R8, RT_D},
     [0x16] = {INS_LD, AM_R8_D8, RT_D, RT_NONE},
+    [0x19] = {INS_ADD16, AM_R16_R16, RT_HL, RT_DE},
     [0x1A] = {INS_LD, AM_R8_MR16, RT_A, RT_DE},
+    [0x1B] = {INS_DEC16, AM_NONE, RT_DE},
     [0x1C] = {INS_INC, AM_R8_R8, RT_E},
     [0x1D] = {INS_DEC, AM_R8_R8, RT_E},
     [0x1E] = {INS_LD, AM_R8_D8, RT_E, RT_NONE},
@@ -28,24 +34,33 @@ ins_t instructions[0x100] = {
     // 0x2x
     [0x21] = {INS_LD16, AM_R16_MD16, RT_HL, RT_NONE},
     [0x22] = {INS_LD, AM_HLP_R8, RT_HL, RT_A},
+    [0x23] = {INS_INC16, AM_NONE, RT_HL},
     [0x24] = {INS_INC, AM_R8_R8, RT_H},
-    [0x24] = {INS_DEC, AM_R8_R8, RT_H},
+    [0x25] = {INS_DEC, AM_R8_R8, RT_H},
     [0x26] = {INS_LD, AM_R8_D8, RT_H, RT_NONE},
+    [0x29] = {INS_ADD16, AM_R16_R16, RT_HL, RT_HL},
     [0x2A] = {INS_LD, AM_R8_HLP, RT_A, RT_HL},
+    [0x2B] = {INS_DEC16, AM_NONE, RT_HL},
     [0x2C] = {INS_INC, AM_R8_R8, RT_L},
     [0x2D] = {INS_DEC, AM_R8_R8, RT_L},
     [0x2E] = {INS_LD, AM_R8_D8, RT_L, RT_NONE},
+    [0x2F] = {INS_CPL},
 
     // 0x3x
     [0x31] = {INS_LD16, AM_R16_MD16, RT_SP, RT_NONE},
     [0x32] = {INS_LD, AM_HLM_R8, RT_HL, RT_A},
+    [0x33] = {INS_INC16, AM_NONE, RT_SP},
     [0x34] = {INS_INC, AM_MR16_R8, RT_HL},
     [0x35] = {INS_DEC, AM_MR16_R8, RT_HL},
     [0x36] = {INS_LD, AM_MR16_D8, RT_HL, RT_NONE},
+    [0x37] = {INS_SCF},
+    [0x39] = {INS_ADD16, AM_R16_R16, RT_HL, RT_SP},
     [0x3A] = {INS_LD, AM_R8_HLM, RT_A, RT_HL},
+    [0x3B] = {INS_DEC16, AM_NONE, RT_SP},
     [0x3C] = {INS_INC, AM_R8_R8, RT_A},
     [0x3D] = {INS_DEC, AM_R8_R8, RT_A},
     [0x3E] = {INS_LD, AM_R8_D8, RT_A, RT_NONE},
+    [0x3F] = {INS_CCF},
 
     // 0x4x
     [0x40] = {INS_LD, AM_R8_R8, RT_B, RT_B}, 
@@ -155,8 +170,34 @@ ins_t instructions[0x100] = {
     [0x9E] = {INS_SBC, AM_R8_MR16, RT_NONE, RT_HL},
     [0x9F] = {INS_SBC, AM_R8_R8, RT_NONE, RT_A},
 
+    // 0xAx
+    [0xA0] = {INS_AND, AM_R8_R8, RT_NONE, RT_B}, // And to register A the second register
+    [0xA1] = {INS_AND, AM_R8_R8, RT_NONE, RT_C},
+    [0xA2] = {INS_AND, AM_R8_R8, RT_NONE, RT_D},
+    [0xA3] = {INS_AND, AM_R8_R8, RT_NONE, RT_E},
+    [0xA4] = {INS_AND, AM_R8_R8, RT_NONE, RT_H},
+    [0xA5] = {INS_AND, AM_R8_R8, RT_NONE, RT_L},
+    [0xA6] = {INS_AND, AM_R8_MR16, RT_NONE, RT_HL},
+    [0xA7] = {INS_AND, AM_R8_R8, RT_NONE, RT_A},
+    [0xA8] = {INS_XOR, AM_R8_R8, RT_NONE, RT_B}, // Xor to register A the second register
+    [0xA9] = {INS_XOR, AM_R8_R8, RT_NONE, RT_C},
+    [0xAA] = {INS_XOR, AM_R8_R8, RT_NONE, RT_D},
+    [0xAB] = {INS_XOR, AM_R8_R8, RT_NONE, RT_E},
+    [0xAC] = {INS_XOR, AM_R8_R8, RT_NONE, RT_H},
+    [0xAD] = {INS_XOR, AM_R8_R8, RT_NONE, RT_L},
+    [0xAE] = {INS_XOR, AM_R8_MR16, RT_NONE, RT_HL},
+    [0xAF] = {INS_XOR, AM_R8_R8, RT_NONE, RT_A},
+
     // 0xBx
-    [0xB8] = {INS_CP, AM_R8_R8, RT_NONE, RT_B},
+    [0xB0] = {INS_OR, AM_R8_R8, RT_NONE, RT_B}, // OR to register A the second register
+    [0xB1] = {INS_OR, AM_R8_R8, RT_NONE, RT_C},
+    [0xB2] = {INS_OR, AM_R8_R8, RT_NONE, RT_D},
+    [0xB3] = {INS_OR, AM_R8_R8, RT_NONE, RT_E},
+    [0xB4] = {INS_OR, AM_R8_R8, RT_NONE, RT_H},
+    [0xB5] = {INS_OR, AM_R8_R8, RT_NONE, RT_L},
+    [0xB6] = {INS_OR, AM_R8_MR16, RT_NONE, RT_HL},
+    [0xB7] = {INS_OR, AM_R8_R8, RT_NONE, RT_A},
+    [0xB8] = {INS_CP, AM_R8_R8, RT_NONE, RT_B}, // Substract A to 2nd register but doesn't store result
     [0xB9] = {INS_CP, AM_R8_R8, RT_NONE, RT_C},
     [0xBA] = {INS_CP, AM_R8_R8, RT_NONE, RT_D},
     [0xBB] = {INS_CP, AM_R8_R8, RT_NONE, RT_E},
@@ -184,16 +225,21 @@ ins_t instructions[0x100] = {
     [0xE1] = {INS_POP, AM_NONE, RT_HL},
     [0xE2] = {INS_LD, AM_MR8_R8, RT_C, RT_A},
     [0xE5] = {INS_PUSH, AM_NONE, RT_HL},
+    [0xE6] = {INS_AND, AM_R8_D8, RT_NONE, RT_NONE},
+    [0xE8] = {INS_ADD16, AM_R16_D8, RT_SP},
     [0xEA] = {INS_LD, AM_MD16_R8, RT_NONE, RT_A},
+    [0xEE] = {INS_XOR, AM_R8_D8, RT_NONE, RT_NONE},
 
     // 0xFx
     [0xF0] = {INS_LD, AM_R8_MD8, RT_A, RT_NONE},
     [0xF1] = {INS_POP, AM_NONE, RT_AF},
     [0xF2] = {INS_LD, AM_R8_MR8, RT_A, RT_C},
     [0xF5] = {INS_PUSH, AM_NONE, RT_AF},
+    [0xF6] = {INS_OR, AM_R8_D8, RT_NONE, RT_NONE},
     [0xF8] = {INS_LD16, AM_R16_SPP, RT_HL, RT_SP},
     [0xF9] = {INS_LD, AM_R16_R16, RT_SP, RT_HL},
     [0xFA] = {INS_LD, AM_R8_MD16, RT_A, RT_NONE},
+    [0xFE] = {INS_CP, AM_R8_D8, RT_NONE, RT_NONE},
 };
 
 ins_t instruction_by_opcode(uint8_t opcode) {

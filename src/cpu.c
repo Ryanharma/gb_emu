@@ -104,7 +104,7 @@ void fetch_data(cpu_t *cpu, cart_t *cart) {
             cpu->fetched_data = bus_read(addr, cart);
             addr++;
             cpu_write_reg(cpu, cpu->cur_instruction.reg2, addr); // Write to register HL : HL--
-            break;       
+            break;
         }
         case AM_HLP_R8: {
             cpu->fetched_data = cpu_read_reg(cpu, cpu->cur_instruction.reg2);
@@ -116,6 +116,11 @@ void fetch_data(cpu_t *cpu, cart_t *cart) {
             break;
         }
         // 16-bit Load Instructions
+        case AM_R16_D8: {
+            cpu->fetched_data = bus_read(cpu->registers.PC, cart);
+            cpu->registers.PC++;
+            break;
+        }
         case AM_R16_MD16: {
             uint8_t lsb = bus_read(cpu->registers.PC, cart);
             cpu->registers.PC++;
@@ -132,19 +137,22 @@ void fetch_data(cpu_t *cpu, cart_t *cart) {
             cpu->registers.PC++;
             cpu->mem_dest = (msb << 8) | lsb;
             cpu->is_dest_mem;
+            break;
         }
         case AM_R16_R16: {
             cpu->fetched_data = cpu_read_reg(cpu, cpu->cur_instruction.reg2);
+            break;
         }
         case AM_R16_SPP: {
             int8_t e = (int8_t) bus_read(cpu->registers.PC, cart);
             cpu->registers.PC++;
             uint16_t SP = cpu_read_reg(cpu, cpu->cur_instruction.reg2);
             cpu->fetched_data = SP + e;
-            uint8_t carry = get_carry_add(SP, e);
+            uint16_t carry = get_carry_add(SP, e);
             // Set flags
             cpu->flags.h = (carry && (1 >> 3));
             cpu->flags.c = (carry && (1 >> 7));
+            break;
         }
         default: {
             ERROR("INVALID ADDRESSING MODE");
@@ -178,7 +186,7 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             }
             else {
                 cpu_write_reg(cpu, cpu->cur_instruction.reg1, cpu->fetched_data);
-                printf("LD %d to register %s\n", cpu->fetched_data, reg_by_instruction(cpu->cur_instruction.reg1));
+                printf("LD 0x%x to register %s\n", cpu->fetched_data, reg_by_instruction(cpu->cur_instruction.reg1));
                 break;
             }
         }
@@ -196,7 +204,7 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             }
             else {
                 cpu_write_reg16(cpu, cpu->cur_instruction.reg1, cpu->fetched_data);
-                printf("LD %d to register %s\n", cpu->fetched_data, reg_by_instruction(cpu->cur_instruction.reg1));
+                printf("LD 0x%x to register %s\n", cpu->fetched_data, reg_by_instruction(cpu->cur_instruction.reg1));
                 break;
             }
         }
@@ -233,12 +241,13 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
         // Arithmetical instructions
         case INS_INC: {
             uint8_t res;
-            uint8_t carry;
+            uint16_t carry;
             if (cpu->is_dest_mem) {
                 uint16_t data = bus_read(cpu->mem_dest, cart);
                 carry = get_carry_add(data, 1);
                 res = data + 1;
                 bus_write(cpu->mem_dest, res, cart);
+                printf("Memory at address %x incremented to value %x\n", cpu->mem_dest, res);
             }
             else {
                 // Destination is a register
@@ -246,20 +255,27 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
                 carry = get_carry_add(reg, 1);
                 res = reg + 1;
                 cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+                printf("Register %s incremented to value %d\n", reg_by_instruction(cpu->cur_instruction.reg1), res);
             }
             cpu->flags.z = (res == 0);
             cpu->flags.n = 0;
             cpu->flags.h = carry && (1 >> 3);
             break;
         }
+        case INS_INC16: {
+            uint16_t reg = cpu_read_reg(cpu, cpu->cur_instruction.reg1);
+            cpu_write_reg16(cpu, cpu->cur_instruction.reg1, reg + 1);
+            break;
+        }
         case INS_DEC: {
             uint8_t res;
-            uint8_t carry;
+            uint16_t carry;
             if (cpu->is_dest_mem) {
                 uint16_t data = bus_read(cpu->mem_dest, cart);
                 carry = get_carry_add(data, 0xFF);
                 res = data - 1;
                 bus_write(cpu->mem_dest, res, cart);
+                printf("Memory at address %x decremented to value %x\n", cpu->mem_dest, res);
             }
             else {
                 // Destination is a register
@@ -267,22 +283,29 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
                 carry = get_carry_add(reg, 0xFF);
                 res = reg - 1;
                 cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+                printf("Register %s decremented to value %x\n", reg_by_instruction(cpu->cur_instruction.reg1), res);
                 // Set flags
             }
             break;
         }
+        case INS_DEC16: {
+            uint16_t reg = cpu_read_reg(cpu, cpu->cur_instruction.reg1);
+            cpu_write_reg16(cpu, cpu->cur_instruction.reg1, reg - 1);
+            break;
+        }
         case INS_ADD: {
-            uint8_t carry = get_carry_add(cpu->registers.A, cpu->fetched_data);
+            uint16_t carry = get_carry_add(cpu->registers.A, cpu->fetched_data);
             cpu->registers.A += cpu->fetched_data;
             // Set flags (z,n,h,c)!!!
             cpu->flags.z = (cpu->registers.A == 0);
             cpu->flags.n = 0;
             cpu->flags.h = (carry && (1 >> 3));
             cpu->flags.c = (carry && (1 >> 7));
+            printf("A = A + %x = %x\n", cpu->fetched_data, cpu->registers.A);
             break;
         }
         case INS_ADC: {
-            uint8_t carry = get_carry_add(cpu->registers.A + cpu->flags.c, cpu->fetched_data);
+            uint16_t carry = get_carry_add(cpu->registers.A + cpu->flags.c, cpu->fetched_data);
             cpu->registers.A += cpu->fetched_data + cpu->flags.c;
             // Set flags (z,n,h,c)!!!
             cpu->flags.z = (cpu->registers.A == 0);
@@ -291,8 +314,17 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             cpu->flags.c = (carry && (1 >> 7));
             break;
         }
+        case INS_ADD16: {
+            uint16_t dest_reg = cpu_read_reg(cpu, cpu->cur_instruction.reg1);
+            cpu_write_reg16(cpu, cpu->cur_instruction.reg1, dest_reg + cpu->fetched_data);
+            uint16_t carry = get_carry_add(dest_reg, cpu->fetched_data);
+            // Set flags based on carry vector result
+            cpu->flags.n = 0;
+            cpu->flags.h = (carry && (1 >> 11));
+            cpu->flags.c = (carry && (1 >> 15));
+        }
         case INS_SUB: {
-            uint8_t carry = get_carry_add(cpu->registers.A, CA2(cpu->fetched_data));
+            uint16_t carry = get_carry_add(cpu->registers.A, CA2(cpu->fetched_data));
             cpu->registers.A += CA2(cpu->fetched_data);
             // Set flags (z,n,h,c)!!!
             cpu->flags.z = (cpu->registers.A == 0);
@@ -301,8 +333,18 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             cpu->flags.c = (carry && (1 >> 7));
             break;
         }
+        case INS_SBC: {
+            uint16_t carry = get_carry_add(cpu->registers.A, CA2(cpu->fetched_data) - cpu->flags.c);
+            cpu->registers.A += CA2(cpu->fetched_data) - cpu->flags.c;
+            // Set flags (z,n,h,c)!!!
+            cpu->flags.z = (cpu->registers.A == 0);
+            cpu->flags.n = 1;
+            cpu->flags.h = (carry && (1 >> 3));
+            cpu->flags.c = (carry && (1 >> 7));
+            break;
+        }
         case INS_CP: {
-            uint8_t carry = get_carry_add(cpu->registers.A, CA2(cpu->fetched_data));
+            uint16_t carry = get_carry_add(cpu->registers.A, CA2(cpu->fetched_data));
             uint8_t result = cpu->registers.A + CA2(cpu->fetched_data); // No update on register A
             // Set flags (z,n,h,c)!!!
             cpu->flags.z = (result == 0);
@@ -311,15 +353,55 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             cpu->flags.c = (carry && (1 >> 7));
             break;
         }
-        case INS_SBC: {
-            uint8_t carry = get_carry_add(cpu->registers.A, CA2(cpu->fetched_data) - cpu->flags.c);
-            cpu->registers.A += CA2(cpu->fetched_data) - cpu->flags.c;
-            // Set flags (z,n,h,c)!!!
+        case INS_AND: {
+            // Perform AND operation between A register and specified register / data from memory
+            // Store the result in the A register and set certain flags
+            cpu->registers.A &= cpu->fetched_data;
             cpu->flags.z = (cpu->registers.A == 0);
-            cpu->flags.n = 1;
-            cpu->flags.h = (carry && (1 >> 3));
-            cpu->flags.c = (carry && (1 >> 7));
+            cpu->flags.n = 0;
+            cpu->flags.h = 1;
+            cpu->flags.c = 0;
             break;
+        }
+        case INS_OR: {
+            // Perform AND operation between A register and specified register / data from memory
+            // Store the result in the A register and set certain flags
+            cpu->registers.A |= cpu->fetched_data;
+            cpu->flags.z = (cpu->registers.A == 0);
+            cpu->flags.n = 0;
+            cpu->flags.h = 1;
+            cpu->flags.c = 0;
+            break;
+        }
+        case INS_XOR: {
+            // Perform AND operation between A register and specified register / data from memory
+            // Store the result in the A register and set certain flags
+            cpu->registers.A ^= cpu->fetched_data;
+            cpu->flags.z = (cpu->registers.A == 0);
+            cpu->flags.n = 0;
+            cpu->flags.h = 1;
+            cpu->flags.c = 0;
+            break;
+        }
+        case INS_CCF: {
+            // Flip the zero flag and clears N and H flags
+            cpu->flags.n = 0;
+            cpu->flags.h = 0;
+            cpu->flags.z = ~cpu->flags.z;
+            break;
+        }
+        case INS_SCF: {
+            // Set the carry flag and clears N and H flags
+            cpu->flags.n = 0;
+            cpu->flags.h = 0;
+            cpu->flags.c = 1;
+            break;
+        }
+        case INS_CPL: {
+            // Complements the accumulator register and sets the N and H flags
+            cpu->registers.A = ~cpu->registers.A;
+            cpu->flags.n = 1;
+            cpu->flags.h = 1;
         }
         default:
             ERROR("INSTRUCTION TYPE UNDEFINED");
@@ -461,14 +543,14 @@ void cpu_write_reg16(cpu_t *cpu, reg_t RT, uint16_t data) {
     return;
 }
 
-uint8_t get_carry_add(uint16_t reg, int8_t e) {
+uint16_t get_carry_add(uint16_t reg, int16_t e) {
     // The role of this function is to get the carry vector resulting from an addition.
     // This is important to set the flag register after an arithmetic operation was done.
     // It consist of the following operations (indexed from LSB to MSB): 
     // if i = 0: c(0) = reg(0) x e(0)
     // if i > 0: c(i) = reg(i) x e(i) + reg(i) x c(i-1) + e(i) x c(i-1)
     uint8_t c = 0; // Carry vector, constructed with or operations
-    for (int i = 0; i < sizeof(int8_t) * 8; i++) {
+    for (int i = 0; i < 2 * sizeof(int8_t) * 8; i++) {
         if (i == 0) {
             c |= (((reg & (1 << i)) && (e & (1 << i))) << i);
         }
