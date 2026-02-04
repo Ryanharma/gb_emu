@@ -14,31 +14,40 @@ is needed in those functions to emulate it.
 #include "common.h"
 
 typedef enum {
-    INS_NOT_IMPLEMENTED,
-    INS_NOP,
-    INS_STOP,
-    INS_HALT,
-    INS_LD,
-    INS_LD16,
-    INS_INC,
-    INS_INC16,
-    INS_DEC,
-    INS_DEC16,
+    INS_NOT_IMPLEMENTED, // Needs to be first one to set by default
     INS_ADD,
     INS_ADC,
     INS_ADD16,
-    INS_SUB,
-    INS_SBC,
-    INS_CP,
     INS_AND,
-    INS_OR,
-    INS_XOR,
-    INS_CCF,
-    INS_SCF,
+    INS_CALL,
+    INS_CP,
     INS_CPL,
+    INS_CCF,
+    INS_DEC,
+    INS_DEC16,
+    INS_HALT,
+    INS_INC,
+    INS_INC16,
     INS_JP,
+    INS_JR,
+    INS_LD,
+    INS_LD16,
+    INS_NOP,
+    INS_OR,
     INS_PUSH,
     INS_POP,
+    INS_RET,
+    INS_RETI,
+    INS_RLC,
+    INS_RRC,
+    INS_RL,
+    INS_RR,
+    INS_RST,
+    INS_SUB,
+    INS_SBC,
+    INS_STOP,
+    INS_SCF,
+    INS_XOR,
 } asm_t;
 
 typedef enum {
@@ -81,12 +90,24 @@ typedef enum {
     CT_NONE, CT_Z, CT_NZ, CT_C, CT_NC,
 } cond_t;
 
+typedef enum {
+    RST_00 = 0x00, 
+    RST_08 = 0x08,
+    RST_10 = 0x10,
+    RST_18 = 0x18,
+    RST_20 = 0x20,
+    RST_28 = 0x28,
+    RST_30 = 0x30,
+    RST_38 = 0x38,
+} rst_t;
+
 typedef struct instruction {
     asm_t ins_type;
     addr_mode_t addr_mode;
     reg_t reg1;
     reg_t reg2;
     cond_t cond;
+    rst_t rst;
 } ins_t;
 
 ins_t instruction_by_opcode(uint8_t opcode);

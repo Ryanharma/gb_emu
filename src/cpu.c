@@ -46,6 +46,7 @@ void fetch_data(cpu_t *cpu, cart_t *cart) {
             break;
         }
         case AM_MD16_R8: {
+            // Used also for jump instructions because of mem_dest being set correctly.
             cpu->fetched_data = cpu_read_reg(cpu, cpu->cur_instruction.reg2);
             uint8_t lsb = bus_read(cpu->registers.PC, cart);
             cpu->registers.PC++;
@@ -227,14 +228,67 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             printf("POP to %s = %x / SP = %x\n", reg_by_instruction(cpu->cur_instruction.reg1), data, cpu->registers.SP);
         }
         case INS_JP: {
-            // First let's implement it without any condition
+            if (cpu_check_flag(cpu, cpu->cur_instruction.cond))
+                cpu->registers.PC = cpu->mem_dest;
+            printf("JP 0x%2.2x\n", cpu->mem_dest);
+            break;
+        }
+
+        case INS_JR: {
+            int8_t e = bus_read(cpu->registers.PC, cart); // Signed operand
+            cpu->registers.PC++;
+            if (cpu_check_flag(cpu, cpu->cur_instruction.cond))
+                cpu->registers.PC += e;
+            printf("JP 0x%2.2x\n", cpu->registers.PC);
+            break;
+        }
+
+        case INS_CALL: {
             uint8_t lsb = bus_read(cpu->registers.PC, cart);
             cpu->registers.PC++;
             uint8_t msb = bus_read(cpu->registers.PC, cart);
             cpu->registers.PC++;
-            uint16_t addr = lsb | (msb << 8);
-            cpu->registers.PC = addr;
-            printf("JP 0x%2.2x\n", addr);
+            uint16_t mem_dest = msb << 8 | lsb;
+            if (cpu_check_flag(cpu, cpu->cur_instruction.cond)) {
+                cpu->registers.SP--; // Push to stack return address of the function
+                bus_write(cpu->registers.SP, cpu->registers.PC >> 8, cart); // Write MSB of current PC
+                cpu->registers.SP--;
+                bus_write(cpu->registers.SP, cpu->registers.PC & 0xFF, cart);
+                cpu->registers.PC = mem_dest;
+            }
+            break;
+        }
+
+        case INS_RET: {
+            if (cpu_check_flag(cpu, cpu->cur_instruction.cond)) {
+                uint8_t lsb = bus_read(cpu->registers.SP, cart);
+                cpu->registers.SP++;
+                uint8_t msb = bus_read(cpu->registers.SP, cart);
+                cpu->registers.SP++;
+                uint16_t ret_addr = msb << 8 | lsb;
+                cpu->registers.PC = ret_addr;
+            }
+            break;
+        }
+
+        case INS_RETI: {
+            uint8_t lsb = bus_read(cpu->registers.SP, cart);
+            cpu->registers.SP++;
+            uint8_t msb = bus_read(cpu->registers.SP, cart);
+            cpu->registers.SP++;
+            uint16_t ret_addr = msb << 8 | lsb;
+            cpu->registers.PC = ret_addr;
+            cpu->ime = true;
+            break;
+        }
+
+        case INS_RST: {
+            // Call to function with HC jump address
+            cpu->registers.SP--;
+            bus_write(cpu->registers.SP, cpu->registers.PC >> 8, cart);
+            cpu->registers.SP--;
+            bus_write(cpu->registers.SP, cpu->registers.PC & 0xFF, cart);
+            cpu->registers.PC = cpu->cur_instruction.rst;
             break;
         }
 
@@ -322,6 +376,7 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             cpu->flags.n = 0;
             cpu->flags.h = (carry && (1 >> 11));
             cpu->flags.c = (carry && (1 >> 15));
+            break;
         }
         case INS_SUB: {
             uint16_t carry = get_carry_add(cpu->registers.A, CA2(cpu->fetched_data));
@@ -402,6 +457,37 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             cpu->registers.A = ~cpu->registers.A;
             cpu->flags.n = 1;
             cpu->flags.h = 1;
+            break;
+        }
+        case INS_RLC: {
+            // Rotate Left Circular instruction
+            cpu->flags.c = (cpu->fetched_data & 1 << 7);
+            uint8_t res = (cpu->fetched_data << 1) + cpu->flags.c;
+            cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            break;
+        }
+        case INS_RRC: {
+            // Rotate Right Circular instruction
+            cpu->flags.c = (cpu->fetched_data & 1 << 0);
+            uint8_t res = (cpu->fetched_data >> 1) + (cpu->flags.c << 7);
+            cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            break;
+        }
+        case INS_RL: {
+            // Rotate Left with C flag as part of the register
+            bool msb = (cpu->fetched_data & 1 << 7);
+            uint8_t res = (cpu->fetched_data << 1)  + cpu->flags.c;
+            cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            cpu->flags.c = msb;
+            break;
+        }
+        case INS_RR: {
+            // Rotate Right with C flag as part of the register
+            bool lsb = (cpu->fetched_data & 1 << 0);
+            uint8_t res = (cpu->fetched_data << 1)  + (cpu->flags.c << 7);
+            cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            cpu->flags.c = lsb;
+            break;
         }
         default:
             ERROR("INSTRUCTION TYPE UNDEFINED");
@@ -542,7 +628,22 @@ void cpu_write_reg16(cpu_t *cpu, reg_t RT, uint16_t data) {
     }
     return;
 }
-
+bool cpu_check_flag(cpu_t *cpu, cond_t CT) {
+    switch (CT) {
+        case CT_NONE:
+            return true;
+        case CT_Z: 
+            return cpu->flags.z;
+        case CT_NZ:
+            return ~cpu->flags.z;
+        case CT_C:
+            return cpu->flags.c;
+        case CT_NC:
+            return ~cpu->flags.c;
+        default:
+            ERROR("Condition type for jump instruction not defined!");
+    }
+}
 uint16_t get_carry_add(uint16_t reg, int16_t e) {
     // The role of this function is to get the carry vector resulting from an addition.
     // This is important to set the flag register after an arithmetic operation was done.
