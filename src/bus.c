@@ -18,9 +18,11 @@
 
 uint8_t bus_read(uint16_t addr, cart_t *cart) {
     if (BETWEEN(addr, 0x0000, 0x7FFF)) {
+        // Read into cartridge ROM
         return *(cart->rom_data + addr);
     }
     if (BETWEEN(addr, 0x8000, 0x9FFF)) {
+        // Read VRAM
         ERROR("NOT IMPLEMENTED YET");
     }
 }

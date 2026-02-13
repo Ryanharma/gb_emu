@@ -1,6 +1,5 @@
 #include "cpu.h"
 
-static int c = 644;
 void fetch_data(cpu_t *cpu, cart_t *cart) {
     // Function that fetch data according to the addressing mode of the current instruction
     cpu->mem_dest    = 0;
@@ -32,6 +31,13 @@ void fetch_data(cpu_t *cpu, cart_t *cart) {
         case AM_MR16_D8: {
             cpu->fetched_data = bus_read(cpu->registers.PC, cart);
             cpu->registers.PC++;
+            cpu->mem_dest = cpu_read_reg(cpu, cpu->cur_instruction.reg1);
+            cpu->is_dest_mem = true;
+            break;
+        }
+        case AM_MR16_MR16: {
+            uint16_t addr = cpu_read_reg(cpu, cpu->cur_instruction.reg2);
+            cpu->fetched_data = bus_read(addr, cart);
             cpu->mem_dest = cpu_read_reg(cpu, cpu->cur_instruction.reg1);
             cpu->is_dest_mem = true;
             break;
@@ -88,7 +94,7 @@ void fetch_data(cpu_t *cpu, cart_t *cart) {
             uint16_t addr = cpu_read_reg(cpu, cpu->cur_instruction.reg2);
             cpu->fetched_data = bus_read(addr, cart);
             addr--;
-            cpu_write_reg(cpu, cpu->cur_instruction.reg2, addr); // Write to register HL : HL--
+            cpu_write_reg16(cpu, cpu->cur_instruction.reg2, addr); // Write to register HL : HL--
             break;
         }
         case AM_HLM_R8: {
@@ -104,7 +110,10 @@ void fetch_data(cpu_t *cpu, cart_t *cart) {
             uint16_t addr = cpu_read_reg(cpu, cpu->cur_instruction.reg2);
             cpu->fetched_data = bus_read(addr, cart);
             addr++;
-            cpu_write_reg(cpu, cpu->cur_instruction.reg2, addr); // Write to register HL : HL--
+            // printf("addr value = %d\n", addr);
+            // printf("H = %2.2X / L = %2.2X\n", cpu->registers.H, cpu->registers.L);
+            cpu_write_reg16(cpu, cpu->cur_instruction.reg2, addr); // Write to register HL : HL++
+            // printf("H = %2.2X / L = %2.2X\n", cpu->registers.H, cpu->registers.L);
             break;
         }
         case AM_HLP_R8: {
@@ -165,9 +174,9 @@ void fetch_data(cpu_t *cpu, cart_t *cart) {
 void fetch_instruction(cpu_t *cpu, cart_t *cart) {
     // Function that fetch the next instruction given by the address of the pc
     cpu->cur_opcode = bus_read(cpu->registers.PC, cart);
-    printf("Current instruction opcode: 0x%2.2X\n", cpu->cur_opcode);
+    printf("Current PC/opcode: 0x%2.2X/0x%2.2X\n", cpu->registers.PC, cpu->cur_opcode);
     cpu->registers.PC++; // For 1 memory read
-    cpu->cur_instruction = instruction_by_opcode(cpu->cur_opcode);
+    cpu->cur_instruction = instruction_by_opcode(cpu->cur_opcode, &cpu->cb_mode);
     if (&cpu->cur_instruction == NULL) {
         ERROR("The instruction couldn't be found in GB ISA !");
     }
@@ -201,13 +210,12 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
                 cpu->mem_dest++;
                 bus_write(cpu->mem_dest, msb, cart);
                 printf("M[%X] = %X\n", cpu->mem_dest, msb);
-                break;
             }
             else {
                 cpu_write_reg16(cpu, cpu->cur_instruction.reg1, cpu->fetched_data);
                 printf("LD 0x%x to register %s\n", cpu->fetched_data, reg_by_instruction(cpu->cur_instruction.reg1));
-                break;
             }
+            break;
         }
         case INS_PUSH: {
             cpu->fetched_data = cpu_read_reg(cpu, cpu->cur_instruction.reg1);
@@ -239,7 +247,7 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             cpu->registers.PC++;
             if (cpu_check_flag(cpu, cpu->cur_instruction.cond))
                 cpu->registers.PC += e;
-            printf("JP 0x%2.2x\n", cpu->registers.PC);
+            printf("JR 0x%2.2x\n", cpu->registers.PC);
             break;
         }
 
@@ -255,6 +263,7 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
                 cpu->registers.SP--;
                 bus_write(cpu->registers.SP, cpu->registers.PC & 0xFF, cart);
                 cpu->registers.PC = mem_dest;
+                printf("CALL 0x%2.2X\n", mem_dest);
             }
             break;
         }
@@ -267,6 +276,7 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
                 cpu->registers.SP++;
                 uint16_t ret_addr = msb << 8 | lsb;
                 cpu->registers.PC = ret_addr;
+                printf("RET 0x%2.2X\n", ret_addr);
             }
             break;
         }
@@ -279,6 +289,7 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             uint16_t ret_addr = msb << 8 | lsb;
             cpu->registers.PC = ret_addr;
             cpu->ime = true;
+            printf("RETI 0x%2.2X\n", ret_addr);
             break;
         }
 
@@ -289,6 +300,7 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             cpu->registers.SP--;
             bus_write(cpu->registers.SP, cpu->registers.PC & 0xFF, cart);
             cpu->registers.PC = cpu->cur_instruction.rst;
+            printf("RST 0x%2.2X\n", cpu->registers.PC);
             break;
         }
 
@@ -355,7 +367,7 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             cpu->flags.n = 0;
             cpu->flags.h = (carry && (1 >> 3));
             cpu->flags.c = (carry && (1 >> 7));
-            printf("A = A + %x = %x\n", cpu->fetched_data, cpu->registers.A);
+            printf("ADD A + %x = %x\n", cpu->fetched_data, cpu->registers.A);
             break;
         }
         case INS_ADC: {
@@ -366,6 +378,7 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             cpu->flags.n = 0;
             cpu->flags.h = (carry && (1 >> 3));
             cpu->flags.c = (carry && (1 >> 7));
+            printf("ADC + A %x = %x\n", cpu->fetched_data, cpu->registers.A);
             break;
         }
         case INS_ADD16: {
@@ -386,6 +399,7 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             cpu->flags.n = 1;
             cpu->flags.h = (carry && (1 >> 3));
             cpu->flags.c = (carry && (1 >> 7));
+            printf("SUB A - %x = %x\n", cpu->fetched_data, cpu->registers.A);
             break;
         }
         case INS_SBC: {
@@ -398,6 +412,26 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             cpu->flags.c = (carry && (1 >> 7));
             break;
         }
+        case INS_DAA: {
+            // Decimal accumulator adjustor
+            uint16_t offset = 0;
+            if (cpu->registers.A & 0xF > 0x09 || cpu->flags.h) {
+                offset |= 0x06;
+            }
+            if (cpu->registers.A > 0x99 || cpu->flags.c) {
+                offset |= 0x60;
+            }
+            cpu->registers.A += offset;
+            break;
+        }
+        case INS_DI: {
+            cpu->ime = 0;
+            break;
+        }
+        case INS_EI: {
+            cpu->ime = 1;
+            break;
+        }
         case INS_CP: {
             uint16_t carry = get_carry_add(cpu->registers.A, CA2(cpu->fetched_data));
             uint8_t result = cpu->registers.A + CA2(cpu->fetched_data); // No update on register A
@@ -406,6 +440,7 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             cpu->flags.n = 1;
             cpu->flags.h = (carry && (1 >> 3));
             cpu->flags.c = (carry && (1 >> 7));
+            printf("CP A - %2.2X = %2.2X\n", cpu->fetched_data, result);
             break;
         }
         case INS_AND: {
@@ -429,13 +464,22 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             break;
         }
         case INS_XOR: {
-            // Perform AND operation between A register and specified register / data from memory
+            // Perform XOR operation between A register and specified register / data from memory
             // Store the result in the A register and set certain flags
             cpu->registers.A ^= cpu->fetched_data;
             cpu->flags.z = (cpu->registers.A == 0);
             cpu->flags.n = 0;
             cpu->flags.h = 1;
             cpu->flags.c = 0;
+            printf("XOR A %2.2X = %2.2X\n", cpu->fetched_data, cpu->registers.A);
+            break;
+        }
+        case INS_STOP: {
+            cpu->stopped = 1;
+            break;
+        }
+        case INS_HALT: {
+            cpu->halted = 1;
             break;
         }
         case INS_CCF: {
@@ -444,6 +488,10 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             cpu->flags.h = 0;
             cpu->flags.z = ~cpu->flags.z;
             break;
+        }
+        case INS_CB: {
+            // Prefix CB => look for next instruction
+            cpu->cb_mode = true;
         }
         case INS_SCF: {
             // Set the carry flag and clears N and H flags
@@ -463,30 +511,139 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             // Rotate Left Circular instruction
             cpu->flags.c = (cpu->fetched_data & 1 << 7);
             uint8_t res = (cpu->fetched_data << 1) + cpu->flags.c;
-            cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            if (cpu->is_dest_mem) {
+                bus_write(cpu->mem_dest, res, cart);
+            }
+            else {
+                cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            }
             break;
         }
         case INS_RRC: {
             // Rotate Right Circular instruction
             cpu->flags.c = (cpu->fetched_data & 1 << 0);
             uint8_t res = (cpu->fetched_data >> 1) + (cpu->flags.c << 7);
-            cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            if (cpu->is_dest_mem) {
+                bus_write(cpu->mem_dest, res, cart);
+            }
+            else {
+                cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            }
             break;
         }
         case INS_RL: {
             // Rotate Left with C flag as part of the register
             bool msb = (cpu->fetched_data & 1 << 7);
             uint8_t res = (cpu->fetched_data << 1)  + cpu->flags.c;
-            cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            if (cpu->is_dest_mem) {
+                bus_write(cpu->mem_dest, res, cart);
+            }
+            else {
+                cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            }
             cpu->flags.c = msb;
             break;
         }
         case INS_RR: {
             // Rotate Right with C flag as part of the register
             bool lsb = (cpu->fetched_data & 1 << 0);
-            uint8_t res = (cpu->fetched_data << 1)  + (cpu->flags.c << 7);
-            cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            uint8_t res = (cpu->fetched_data >> 1)  + (cpu->flags.c << 7);
+            if (cpu->is_dest_mem) {
+                bus_write(cpu->mem_dest, res, cart);
+            }
+            else {
+                cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            }
             cpu->flags.c = lsb;
+            break;
+        }
+        case INS_SLA: {
+            // Shift Left Arithmetically
+            bool msb = cpu->fetched_data & (1 << 7);
+            uint8_t res = cpu->fetched_data << 1;
+            if (cpu->is_dest_mem) {
+                bus_write(cpu->mem_dest, res, cart);
+            }
+            else {
+                cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            }
+            cpu->flags.c = msb;
+            cpu->flags.h = 0;
+            cpu->flags.n = 0;
+            cpu->flags.z = (res == 0);
+            break;
+        }
+        case INS_SRA: {
+            // Shift Right Arithmetically
+            bool lsb = (cpu->fetched_data & 1 << 0);
+            bool msb = (cpu->fetched_data & 1 << 7);
+            uint8_t res = (cpu->fetched_data >> 1) | (msb << 7);
+            cpu->flags.c = lsb;
+            if (cpu->is_dest_mem) {
+                bus_write(cpu->mem_dest, res, cart);
+            }
+            else {
+                cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            }
+            break;
+        }
+        case INS_SRL: {
+            // Shift Right Logically (ignore MSB)
+            bool lsb = cpu->fetched_data & (1 << 0);
+            uint8_t res = cpu->fetched_data >> 1;
+            if (cpu->is_dest_mem) {
+                bus_write(cpu->mem_dest, res, cart);
+            }
+            else {
+                cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            }
+            cpu->flags.c = lsb;
+            cpu->flags.n = 0;
+            cpu->flags.h = 0;
+            cpu->flags.z = (res == 0);
+            break;
+        }
+        case INS_SWAP: {
+            // Swap the first and last 4 bits of the 8 bits register
+            uint8_t res = 0; 
+            res |= cpu->fetched_data << 4;
+            res |= cpu->fetched_data >> 4;
+            if (cpu->is_dest_mem) {
+                bus_write(cpu->mem_dest, res, cart);
+            }
+            else {
+                cpu_write_reg(cpu, cpu->cur_instruction.reg1, res);
+            }
+            cpu->flags.c = 0;
+            cpu->flags.n = 0;
+            cpu->flags.h = 0;
+            cpu->flags.z = (res == 0);
+            break;
+        }
+        case INS_BIT: {
+            cpu->flags.z = cpu->fetched_data & (1 << cpu->cur_instruction.brs);
+            cpu->flags.h = 1;
+            cpu->flags.n = 0;
+            break;
+        }
+        case INS_RES: {
+            cpu->fetched_data &= ~(1 << cpu->cur_instruction.brs); 
+            if (cpu->is_dest_mem) {
+                bus_write(cpu->mem_dest, cpu->fetched_data, cart);
+            }
+            else {
+                cpu_write_reg(cpu, cpu->cur_instruction.reg1, cpu->fetched_data);
+            }
+            break;
+        }
+        case INS_SET: {
+            cpu->fetched_data |= (1 << cpu->cur_instruction.brs); 
+            if (cpu->is_dest_mem) {
+                bus_write(cpu->mem_dest, cpu->fetched_data, cart);
+            }
+            else {
+                cpu_write_reg(cpu, cpu->cur_instruction.reg1, cpu->fetched_data);
+            }
             break;
         }
         default:
@@ -506,8 +663,6 @@ void cpu_init(cpu_t *cpu) {
 
 bool cpu_step(cpu_t *cpu, cart_t *cart) {
     if (!cpu->halted) {
-        // uint16_t pc = cpu->registers.PC;
-        // printf("PC value 0x%2.2X\n", pc);
         fetch_instruction(cpu, cart);
         fetch_data(cpu, cart);
         execute_instruction(cpu, cart);
@@ -628,6 +783,7 @@ void cpu_write_reg16(cpu_t *cpu, reg_t RT, uint16_t data) {
     }
     return;
 }
+
 bool cpu_check_flag(cpu_t *cpu, cond_t CT) {
     switch (CT) {
         case CT_NONE:
@@ -644,6 +800,16 @@ bool cpu_check_flag(cpu_t *cpu, cond_t CT) {
             ERROR("Condition type for jump instruction not defined!");
     }
 }
+
+void print_cpu_state(cpu_t *cpu) {
+    printf("GPRegs -> A = %x, B = %x, C = %x, D = %x, E = %x, H = %x, L = %x\n",
+    cpu->registers.A, cpu->registers.B, cpu->registers.C, cpu->registers.D, cpu->registers.E, 
+    cpu->registers.H, cpu->registers.L);
+    printf("SP = %x\n", cpu->registers.SP);
+    printf("PC = %x\n", cpu->registers.PC);
+    printf("Opcode of instruction executed is: %x\n", cpu->cur_opcode);
+}
+
 uint16_t get_carry_add(uint16_t reg, int16_t e) {
     // The role of this function is to get the carry vector resulting from an addition.
     // This is important to set the flag register after an arithmetic operation was done.

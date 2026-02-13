@@ -19,12 +19,17 @@ typedef enum {
     INS_ADC,
     INS_ADD16,
     INS_AND,
+    INS_BIT,
     INS_CALL,
     INS_CP,
+    INS_CB,
     INS_CPL,
     INS_CCF,
+    INS_DAA,
     INS_DEC,
     INS_DEC16,
+    INS_DI,
+    INS_EI,
     INS_HALT,
     INS_INC,
     INS_INC16,
@@ -36,6 +41,7 @@ typedef enum {
     INS_OR,
     INS_PUSH,
     INS_POP,
+    INS_RES,
     INS_RET,
     INS_RETI,
     INS_RLC,
@@ -43,10 +49,15 @@ typedef enum {
     INS_RL,
     INS_RR,
     INS_RST,
+    INS_SET,
     INS_SUB,
     INS_SBC,
+    INS_SRL,
+    INS_SRA,
+    INS_SLA,
     INS_STOP,
     INS_SCF,
+    INS_SWAP,
     INS_XOR,
 } asm_t;
 
@@ -60,6 +71,7 @@ typedef enum {
     AM_R8_MD16,
     AM_MD16_R8,
     AM_MR16_D16,
+    AM_MR16_MR16,
     AM_R8_D16,
     AM_R8_MR8,
     AM_MR8_R8,
@@ -101,6 +113,17 @@ typedef enum {
     RST_38 = 0x38,
 } rst_t;
 
+typedef enum {
+    D_00 = 0x00,
+    D_01 = 0x01,
+    D_02 = 0x02,
+    D_03 = 0x03,
+    D_04 = 0x04,
+    D_05 = 0x05,
+    D_06 = 0x06,
+    D_07 = 0x07,
+} brs_t;
+
 typedef struct instruction {
     asm_t ins_type;
     addr_mode_t addr_mode;
@@ -108,9 +131,8 @@ typedef struct instruction {
     reg_t reg2;
     cond_t cond;
     rst_t rst;
+    brs_t brs;
 } ins_t;
 
-ins_t instruction_by_opcode(uint8_t opcode);
+ins_t instruction_by_opcode(uint8_t opcode, bool *cb_mode);
 char *reg_by_instruction(reg_t reg);
-// void ld_r8_r8(cpu_t cpu);
-// void ld_r8_n(cpu_t cpu);

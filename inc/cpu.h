@@ -35,8 +35,10 @@ typedef struct cpu {
     uint16_t mem_dest;
     uint8_t cur_opcode;
     bool is_dest_mem;
-    bool halted;
+    bool cb_mode;
     bool ime;
+    bool halted;
+    bool stopped;
 } cpu_t;
 
 void clock_cycle(cpu_t *cpu);
@@ -49,5 +51,6 @@ bool cpu_check_flag(cpu_t *cpu, cond_t CT);
 void fetch_instruction(cpu_t *cpu, cart_t *cart);
 void fetch_data(cpu_t *cpu, cart_t *cart);
 void execute_instruction(cpu_t *cpu, cart_t *cart);
+void print_cpu_state(cpu_t *cpu);
 uint16_t get_carry_add(uint16_t reg, int16_t e);
 int16_t CA2(uint16_t x);
