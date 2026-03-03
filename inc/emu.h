@@ -2,9 +2,9 @@
 
 #include "common.h"
 #include "cpu.h"
-#include "bus.h"
 #include "cart.h"
-#include "time.h"
+
+// #define CLK_CYCLE 4.194304e6
 
 typedef struct {
     bool paused;

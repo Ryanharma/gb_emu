@@ -25,4 +25,5 @@ typedef struct {
     uint8_t *rom_data;
 } cart_t;
 
+extern cart_t gb_cart;
 bool cart_load(char *cart_path, cart_t *cart);

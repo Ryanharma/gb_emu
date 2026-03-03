@@ -1,5 +1,7 @@
 #include "instructions.h"
 
+bool cb = false;
+
 ins_t instructions[0x100] = {
     
     // 0x0x (FINISHED)
@@ -218,7 +220,7 @@ ins_t instructions[0x100] = {
     [0xBE] = {INS_CP, AM_R8_MR16, RT_NONE, RT_HL},
     [0xBF] = {INS_CP, AM_R8_R8, RT_NONE, RT_A},
 
-    // 0xCx MISSES PREFIX CB
+    // 0xCx (FINISHED)
     [0xC0] = {INS_RET, AM_NONE, RT_NONE, RT_NONE, CT_NZ},
     [0xC1] = {INS_POP, AM_NONE, RT_BC},
     [0xC2] = {INS_JP, AM_MD16_R8, RT_NONE, RT_NONE, CT_NZ},

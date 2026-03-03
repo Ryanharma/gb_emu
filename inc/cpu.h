@@ -3,8 +3,8 @@
 #pragma once
 
 #include "common.h"
-#include "instructions.h"
 #include "cart.h"
+#include "instructions.h"
 #include "bus.h"
 
 typedef struct cpu_reg {
@@ -35,11 +35,12 @@ typedef struct cpu {
     uint16_t mem_dest;
     uint8_t cur_opcode;
     bool is_dest_mem;
-    bool cb_mode;
     bool ime;
     bool halted;
     bool stopped;
 } cpu_t;
+
+extern cpu_t gb_cpu;
 
 void clock_cycle(cpu_t *cpu);
 void cpu_init(cpu_t *cpu);

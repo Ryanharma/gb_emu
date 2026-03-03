@@ -1,4 +1,8 @@
 #include "cpu.h"
+#include "interrupts.h"
+
+cpu_t gb_cpu = {0};
+static bool ime_reg = 0; // Registered value of IME flag
 
 void fetch_data(cpu_t *cpu, cart_t *cart) {
     // Function that fetch data according to the addressing mode of the current instruction
@@ -176,10 +180,12 @@ void fetch_instruction(cpu_t *cpu, cart_t *cart) {
     cpu->cur_opcode = bus_read(cpu->registers.PC, cart);
     printf("Current PC/opcode: 0x%2.2X/0x%2.2X\n", cpu->registers.PC, cpu->cur_opcode);
     cpu->registers.PC++; // For 1 memory read
-    cpu->cur_instruction = instruction_by_opcode(cpu->cur_opcode, &cpu->cb_mode);
+    cpu->cur_instruction = instruction_by_opcode(cpu->cur_opcode, &cb);
     if (&cpu->cur_instruction == NULL) {
         ERROR("The instruction couldn't be found in GB ISA !");
     }
+    if (ime_reg)
+        cpu->ime = 1; // Only if previous instruction was EI
 }
 
 void execute_instruction(cpu_t *cpu, cart_t *cart) {
@@ -425,10 +431,12 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
             break;
         }
         case INS_DI: {
+            ime_reg = false;
             cpu->ime = 0;
             break;
         }
         case INS_EI: {
+            ime_reg = true;
             cpu->ime = 1;
             break;
         }
@@ -491,7 +499,7 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
         }
         case INS_CB: {
             // Prefix CB => look for next instruction
-            cpu->cb_mode = true;
+            cb = true;
         }
         case INS_SCF: {
             // Set the carry flag and clears N and H flags
@@ -648,7 +656,7 @@ void execute_instruction(cpu_t *cpu, cart_t *cart) {
         }
         default:
             ERROR("INSTRUCTION TYPE UNDEFINED");
-    }
+    } 
     return;
 }
 
@@ -667,6 +675,10 @@ bool cpu_step(cpu_t *cpu, cart_t *cart) {
         fetch_data(cpu, cart);
         execute_instruction(cpu, cart);
         return true;
+    }
+    else {
+        // CPU wakes up as soon as an interrupt is requested
+        interrupt_request(cpu, cart, &gb_interrupt);
     }
     return false;
 }

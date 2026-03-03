@@ -1,8 +1,9 @@
 #include "emu.h"
 #include "cart.h"
+#include "cpu.h"
 
-cart_t cart = {0};
-cpu_t cpu = {0};
 int main(int argc, char **argv) {
-    return emu_run(argc, argv, &cart, &cpu);
+    // argc should be = 2 (program + rom path)
+    // argv[1] contains path to rom
+    return emu_run(argc, argv, &gb_cart, &gb_cpu);
 }

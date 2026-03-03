@@ -10,9 +10,11 @@
 -------- Timer -------
 */
 
-static emu_t emu;
+static emu_t emu = {0};
 
 void emu_cycles(int cpu_cycles){
+    // Represent one machine cycle
+    // SDL_Delay(4*1/CLK_CYCLE);
     return;
 }
 
@@ -29,11 +31,6 @@ int emu_run(int argc, char **argv, cart_t *cart, cpu_t *cpu) {
 
     printf("Cart loaded..\n");
 
-    // SDL_Init(SDL_INIT_VIDEO);
-    // printf("SDL INIT\n");
-    // TTF_Init();
-    // printf("TTF INIT\n");
-
     cpu_init(cpu);
     
     emu.running = true;
@@ -43,17 +40,17 @@ int emu_run(int argc, char **argv, cart_t *cart, cpu_t *cpu) {
     while(emu.running) {
         if (emu.paused) {
             // delay(10);
-            continue;
-            
+            continue;   
         }
 
         if (!cpu_step(cpu, cart)) {
             printf("CPU Stopped\n");
             return -3;
         }
-        if (i>10) {
-            ERROR("ONLY DO 1 EXEC");
+        if (i>20) {
+            ERROR("ONLY DO 20 EXEC");
         }
+        // print_cpu_state(cpu);
         emu.ticks++;
         i++;
     }

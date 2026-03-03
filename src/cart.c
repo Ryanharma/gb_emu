@@ -1,5 +1,7 @@
 #include "cart.h"
 
+cart_t gb_cart = {0};
+
 static const char *ROM_TYPES[0x100] = {
     [0x00] = "ROM ONLY",
     [0x01] = "MBC1",
@@ -159,7 +161,7 @@ bool cart_load(char *cart_path, cart_t *cart) {
     cart->header = (cart_header_t *)(cart->rom_data + 0x100);
     uint8_t lo = cart->header->new_lic_code & 0xFF;
     uint8_t hi = cart->header->new_lic_code >> 8;
-    printf("First and 2nd byte of lic code %X - %X\n", lo, hi);
+    // printf("First and 2nd byte of lic code %X - %X\n", lo, hi);
     printf("Cartridge Loaded:\n");
     printf("\t Title    : %s\n", cart->header->title);
     printf("\t Type     : %2.2X (%s)\n", cart->header->cart_type, cart_type_name(cart->header));

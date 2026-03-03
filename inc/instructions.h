@@ -7,6 +7,7 @@ Instructions are:
     - Others: NOP, HALT, STOP ...                                          
 Some instructions may require multiple clock cycles so the cpu object 
 is needed in those functions to emulate it.
+The execution of those instructions is defined in the cpu.c file
 */
 
 #pragma once
@@ -133,6 +134,8 @@ typedef struct instruction {
     rst_t rst;
     brs_t brs;
 } ins_t;
+
+extern bool cb; // Set if CB instruction is executed
 
 ins_t instruction_by_opcode(uint8_t opcode, bool *cb_mode);
 char *reg_by_instruction(reg_t reg);
