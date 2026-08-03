@@ -1,0 +1,7 @@
+# Remove tests folder + tests roms + build folder for exe
+arithm/*
+test_roms/*
+build/*
+
+# Remove SDL related stuff
+sdl_test_code/*
