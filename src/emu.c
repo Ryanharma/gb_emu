@@ -1,4 +1,5 @@
 #include "emu.h"
+#include "ppu.h"
 
 // This file is required to group every component of the SOC to build the emulator
 
@@ -23,16 +24,19 @@ int emu_run(int argc, char **argv, cart_t *cart, cpu_t *cpu) {
         printf("Usage: emu <rom_file>\n");
         return -1;
     }
+    
+    // if (!cpu_boot(cpu)) {
+    //     printf("Failed to boot CPU\n");
+    //     return -2;
+    // }
 
     if (!cart_load(argv[1], cart)) {
         printf("Failed to load ROM file: %s\n", argv[1]);
-        return -2;
+        return -3;
     }
 
     printf("Cart loaded..\n");
-
     cpu_init(cpu);
-    
     emu.running = true;
     emu.paused = false;
     emu.ticks = 0;
@@ -47,9 +51,14 @@ int emu_run(int argc, char **argv, cart_t *cart, cpu_t *cpu) {
             printf("CPU Stopped\n");
             return -3;
         }
-        if (i>20) {
-            ERROR("ONLY DO 20 EXEC");
-        }
+        i++;
+        // if (i>98350) {
+        //     ERROR("ONLY DO 200 INSTRUCTIONS");
+        // }
+        // ppu_step();
+        // if (i>20) {
+        //     ERROR("ONLY DO 20 EXEC");
+        // }
         // print_cpu_state(cpu);
         emu.ticks++;
         i++;

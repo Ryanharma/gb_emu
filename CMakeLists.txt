@@ -7,7 +7,6 @@ project(gbemu)
 add_executable(${PROJECT_NAME})
 set(CMAKE_BUILD_TYPE Debug)
 target_sources(${PROJECT_NAME} PRIVATE main.c 
-                ${CMAKE_CURRENT_SOURCE_DIR}/log.c
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/emu.c
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/cart.c
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/cpu/bus.c
@@ -18,14 +17,20 @@ target_sources(${PROJECT_NAME} PRIVATE main.c
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/vram.c
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/wram.c
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/hram.c
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/oam.c
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/peripherals/lcd.c
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/peripherals/io.c
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/peripherals/ppu.c
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/peripherals/bootrom.c
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/peripherals/timer.c
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/peripherals/joypad.c
-                ${CMAKE_CURRENT_SOURCE_DIR}/src/peripherals/apu.c)
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/peripherals/apu.c
+                ${CMAKE_CURRENT_SOURCE_DIR}/utils/src/fifo.c
+                ${CMAKE_CURRENT_SOURCE_DIR}/utils/src/log.c
+)
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
+                            ${CMAKE_CURRENT_SOURCE_DIR}/utils/inc
                             ${CMAKE_CURRENT_SOURCE_DIR}/inc
                             ${CMAKE_CURRENT_SOURCE_DIR}/inc/memory
                             ${CMAKE_CURRENT_SOURCE_DIR}/inc/cpu

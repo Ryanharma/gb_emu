@@ -42,7 +42,7 @@ void timer_step(gb_timer_t *timer) {
         if (tima_overflow) {
             timer->tima = timer->tma;
             // IF interrupt signal set to 1 for timer (bit 3)
-            gb_interrupt.IF |= 0b100;
+            gb_interrupts.IF |= 0b100;
         }
         else if (timer->tima + 1 > 0xFF) {
             tima_overflow = true;

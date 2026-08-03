@@ -234,7 +234,7 @@ ins_t instructions[0x100] = {
     [0xCA] = {INS_JP, AM_MD16_R8, RT_NONE, RT_NONE, CT_Z},
     [0xCB] = {INS_CB},
     [0xCC] = {INS_CALL, AM_NONE, RT_NONE, RT_NONE, CT_Z},
-    [0xCD] = {INS_RET, AM_NONE, RT_NONE, RT_NONE, CT_NONE},
+    [0xCD] = {INS_CALL, AM_NONE, RT_NONE, RT_NONE, CT_NONE},
     [0xCE] = {INS_ADC, AM_R8_D8, RT_NONE, RT_NONE},
     [0xCF] = {INS_RST, AM_NONE, RT_NONE, RT_NONE, CT_NONE, RST_08},
 

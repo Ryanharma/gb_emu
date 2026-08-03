@@ -1,6 +1,6 @@
 #include "interrupts.h"
 
-gb_interrupt_t gb_interrupt = {0};
+gb_interrupt_t gb_interrupts = {0};
 
 static const uint16_t interrupt_v[5] = {
     [0] = 0x40,
@@ -15,7 +15,6 @@ void interrupt_request(cpu_t *cpu, cart_t *cart, gb_interrupt_t *gb_interrupts) 
     for (int i = 0; i < 5; i++) {
         // Check for each bit (used) of the 8-bit registers IE and IF
         if ((gb_interrupts->IE & 1 << i) && (gb_interrupts->IF & 1 << i)) {
-            cpu->halted = false; // CPU is not anymore in halt mode if interrupt is pending
             if (cpu->ime)
                 // If ime flag is set, the interrupt is handled
                 interrupt_handle(cpu, cart, gb_interrupts);
@@ -44,35 +43,3 @@ void interrupt_handle(cpu_t *cpu, cart_t *cart, gb_interrupt_t *gb_interrupts) {
         }
     }
 }
-
-// uint8_t interrupt_read(gb_interrupt_t *gb_interrupts, uint16_t address) {
-//     switch (address) {
-//         case (0xFF0F): {
-//             // IF register
-//             return gb_interrupts->IF;
-//         }
-//         case (0xFFFF): {
-//             // IE register
-//             return gb_interrupts->IE;
-//         }
-//         default: 
-//             ERROR("Undefined Address for GB interrupt subsystem") 
-//     }
-// }
-
-// void interrupt_write(gb_interrupt_t *gb_interrupts, uint16_t address, uint8_t value) {
-//     switch (address) {
-//         case (0xFF0F): {
-//             // IF register
-//             gb_interrupts->IF = value;
-//             break;
-//         }
-//         case (0xFFFF): {
-//             // IE register
-//             gb_interrupts->IE = value;
-//             break;
-//         }
-//         default: 
-//             ERROR("Undefined Address for GB interrupt subsystem") 
-//     }
-// }

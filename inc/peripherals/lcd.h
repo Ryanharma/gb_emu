@@ -2,6 +2,9 @@
 
 #include "common.h"
 
+#define LCD_WIDTH 160
+#define LCD_HEIGHT 144
+
 typedef struct {
     // Defines LCD control/status registers
     uint8_t LCDC; // Address FF40, LCD control reg 
@@ -12,8 +15,8 @@ typedef struct {
     uint8_t LYC; // Address FF45, Compare LY and LYC to set interrupt in STAT reg
     uint8_t DMA; // Address FF46, for DMA transfer
     uint8_t BGP; // Address FF47, color palette (Non CGB mode only)
-    uint8_t OBP0; // Address FF48, (Non CGB mode only)
-    uint8_t OBP1; // Address FF49, (Non CGB mode only)
+    uint8_t OBP0; // Address FF48, (Non CGB mode only) / OBJ palette 0 (grey shades)
+    uint8_t OBP1; // Address FF49, (Non CGB mode only) / OBJ palette 1
     uint8_t WY; // Address FF4A, Window Y postion
     uint8_t WX; // Address FF4B, Window X position + 7
 } lcd_t;

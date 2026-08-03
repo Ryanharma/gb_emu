@@ -5,6 +5,7 @@
 #include "common.h"
 #include "cart.h"
 #include "instructions.h"
+#include "bootrom.h"
 #include "bus.h"
 
 typedef struct cpu_reg {
@@ -35,15 +36,16 @@ typedef struct cpu {
     uint16_t mem_dest;
     uint8_t cur_opcode;
     bool is_dest_mem;
-    bool ime;
+    bool ime; // Write only flag
     bool halted;
     bool stopped;
 } cpu_t;
 
 extern cpu_t gb_cpu;
+static bool ime_reg = 0; // Registered value of IME flag
 
-void clock_cycle(cpu_t *cpu);
 void cpu_init(cpu_t *cpu);
+bool cpu_boot(cpu_t *cpu);
 bool cpu_step(cpu_t *cpu, cart_t *cart);
 uint16_t cpu_read_reg(cpu_t *cpu, reg_t RT);
 void cpu_write_reg(cpu_t *cpu, reg_t RT, uint8_t data);

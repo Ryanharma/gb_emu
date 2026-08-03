@@ -2,6 +2,7 @@
 #include "vram.h"
 #include "wram.h"
 #include "hram.h"
+#include "oam.h"
 #include "io.h"
 
 /*
@@ -48,7 +49,7 @@ uint8_t bus_read(uint16_t addr, cart_t *cart) {
     
     if (BETWEEN(addr, 0xFE00, 0xFE9F)) {
         // Read OAM (Object Attribute Memory)
-        ERROR("NOT IMPLEMENTED YET");
+        oam_read(addr);
     }
 
     if (BETWEEN(addr, 0xFEA0, 0xFEFF)) {
@@ -93,7 +94,7 @@ void bus_write(uint16_t addr, uint8_t data, cart_t *cart) {
     
     if (BETWEEN(addr, 0xFE00, 0xFE9F)) {
         // Write OAM (Object Attribute Memory)
-        ERROR("NOT IMPLEMENTED YET");
+        oam_write(addr, data);
     }
 
     if (BETWEEN(addr, 0xFEA0, 0xFEFF)) {
